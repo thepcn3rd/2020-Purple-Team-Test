@@ -1,3 +1,4 @@
+# T1003 - OS Credential Dumping
 # Will dump the contents of a process using Windows Error Reporting
 # The dump then can be analyzed offline...
 # Gather the process ID that you are looking for
