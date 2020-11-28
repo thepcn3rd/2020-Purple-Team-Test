@@ -1,0 +1,29 @@
+$randInt = Get-Random -Minimum 1000 -Maximum 9999
+$code = @"
+using System;
+using System.Diagnostics;
+using System.Threading;
+
+namespace launchNotepad
+{
+    public class Program$randInt
+    {
+        public static void Main()
+        {
+            Process p = new Process();
+		    p.StartInfo.UseShellExecute = false;
+		    p.StartInfo.RedirectStandardOutput = true;
+			p.StartInfo.RedirectStandardError = true;
+			p.StartInfo.CreateNoWindow = true;
+			p.StartInfo.FileName="notepad.exe";
+			//p.StartInfo.Arguments = "/C ping -n 1 127.0.0.1";
+			//p.StartInfo.Arguments = "/C " + responseCommand;
+			p.Start();
+        }
+    }
+}
+"@
+ 
+Add-Type -TypeDefinition $code -Language CSharp	
+iex "[launchNotepad.Program$randInt]::Main()"
+#Invoke-Expression "[launchNotepad.Program$randInt]::Main()"
