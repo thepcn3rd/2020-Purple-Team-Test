@@ -1,0 +1,142 @@
+Rem Attribute VBA_ModuleType=VBAModule
+Sub Module1
+Rem Private Sub App_PresentationOpen(ByVal Pres As Presentation)
+Rem 
+Rem     Call ScheduleTask
+Rem 
+Rem End Sub
+Rem 
+Rem Sub OnSlideShowPageChange()
+Rem 
+Rem     Call ScheduleTask
+Rem     
+Rem End Sub
+Rem 
+Rem Sub ScheduleTask()
+Rem 
+Rem '------------------------------------------------------------------
+Rem ' This sample schedules a task to start notepad.exe 30 seconds
+Rem ' from the time the task is registered.
+Rem '------------------------------------------------------------------
+Rem 
+Rem ' A constant that specifies a time-based trigger.
+Rem Const TriggerTypeTime = 1
+Rem ' A constant that specifies an executable action.
+Rem Const ActionTypeExec = 0
+Rem 
+Rem 
+Rem '********************************************************
+Rem ' Create the TaskService object.
+Rem Set service = CreateObject("Schedule.Service")
+Rem Call service.Connect
+Rem 
+Rem '********************************************************
+Rem ' Get a folder to create a task definition in.
+Rem Dim rootFolder
+Rem Set rootFolder = service.GetFolder("\")
+Rem 
+Rem ' The taskDefinition variable is the TaskDefinition object.
+Rem Dim taskDefinition
+Rem ' The flags parameter is 0 because it is not supported.
+Rem Set taskDefinition = service.NewTask(0)
+Rem 
+Rem '********************************************************
+Rem ' Define information about the task.
+Rem 
+Rem ' Set the registration info for the task by
+Rem ' creating the RegistrationInfo object.
+Rem Dim regInfo
+Rem Set regInfo = taskDefinition.RegistrationInfo
+Rem regInfo.Description = "Start notepad at a certain time"
+Rem regInfo.Author = "Author Name"
+Rem 
+Rem '********************************************************
+Rem ' Set the principal for the task
+Rem Dim principal
+Rem Set principal = taskDefinition.principal
+Rem 
+Rem ' Set the logon type to interactive logon
+Rem principal.LogonType = 3
+Rem 
+Rem 
+Rem ' Set the task setting info for the Task Scheduler by
+Rem ' creating a TaskSettings object.
+Rem Dim settings
+Rem Set settings = taskDefinition.settings
+Rem settings.Enabled = True
+Rem settings.StartWhenAvailable = True
+Rem settings.Hidden = False
+Rem 
+Rem '********************************************************
+Rem ' Create a time-based trigger.
+Rem Dim triggers
+Rem Set triggers = taskDefinition.triggers
+Rem 
+Rem Dim trigger
+Rem Set trigger = triggers.Create(TriggerTypeTime)
+Rem 
+Rem ' Trigger variables that define when the trigger is active.
+Rem Dim startTime, endTime
+Rem 
+Rem Dim time
+Rem time = DateAdd("s", 30, Now)  'start time = 30 seconds from now
+Rem startTime = XmlTime(time)
+Rem 
+Rem time = DateAdd("n", 5, Now) 'end time = 5 minutes from now
+Rem endTime = XmlTime(time)
+Rem 
+Rem 'WScript.Echo "startTime :" & startTime
+Rem 'WScript.Echo "endTime :" & endTime
+Rem 
+Rem trigger.StartBoundary = startTime
+Rem trigger.EndBoundary = endTime
+Rem trigger.ExecutionTimeLimit = "PT5M"    'Five minutes
+Rem trigger.Id = "TimeTriggerId"
+Rem trigger.Enabled = True
+Rem 
+Rem '***********************************************************
+Rem ' Create the action for the task to execute.
+Rem 
+Rem ' Add an action to the task to run notepad.exe.
+Rem Dim Action
+Rem Set Action = taskDefinition.Actions.Create(ActionTypeExec)
+Rem Action.Path = "C:\Windows\System32\notepad.exe"
+Rem 
+Rem 'WScript.Echo "Task definition created. About to submit the task..."
+Rem 
+Rem '***********************************************************
+Rem ' Register (create) the task.
+Rem 
+Rem Call rootFolder.RegisterTaskDefinition( _
+Rem     "Test TimeTrigger", taskDefinition, 6, , , 3)
+Rem 
+Rem 'WScript.Echo "Task submitted."
+Rem 
+Rem End Sub
+Rem 
+Rem 
+Rem '------------------------------------------------------------------
+Rem ' Used to get the time for the trigger
+Rem ' startBoundary and endBoundary.
+Rem ' Return the time in the correct format:
+Rem ' YYYY-MM-DDTHH:MM:SS.
+Rem '------------------------------------------------------------------
+Rem Function XmlTime(t)
+Rem     Dim cSecond, cMinute, CHour, cDay, cMonth, cYear
+Rem     Dim tTime, tDate
+Rem 
+Rem     cSecond = "0" & Second(t)
+Rem     cMinute = "0" & Minute(t)
+Rem     CHour = "0" & Hour(t)
+Rem     cDay = "0" & Day(t)
+Rem     cMonth = "0" & Month(t)
+Rem     cYear = Year(t)
+Rem 
+Rem     tTime = Right(CHour, 2) & ":" & Right(cMinute, 2) & _
+Rem         ":" & Right(cSecond, 2)
+Rem     tDate = cYear & "-" & Right(cMonth, 2) & "-" & Right(cDay, 2)
+Rem     XmlTime = tDate & "T" & tTime
+Rem End Function
+Rem 
+Rem 
+End Sub
