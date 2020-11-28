@@ -1,0 +1,18 @@
+Rem Attribute VBA_ModuleType=VBAModule
+Option VBASupport 1
+Sub AutoOpen()
+
+    Playchess
+
+End Sub
+
+Sub Playchess()
+
+    Set objWMIService = GetObject("winmgmts:\\.\root\cimv2")
+    Set objStartup = objWMIService.Get("Win32_ProcessStartup")
+    Set objConfig = objStartup.SpawnInstance_
+    'objConfig.ShowWindow = 0
+    Set objProcess = GetObject("winmgmts:\\.\root\cimv2:Win32_Process")
+    objProcess.Create "notepad.exe", Null, objConfig, intProcessID
+    
+End Sub
