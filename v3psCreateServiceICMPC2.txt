@@ -1,3 +1,6 @@
+# T1543 Create System Service, compiles C# on the fly and creates the exe
+# ICMPC2 code is in a different repo
+
 $code = @"
 
 // Found the code below for a simple C# service and giving credit to the below resource
